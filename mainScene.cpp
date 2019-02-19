@@ -39,7 +39,7 @@ float lastFrame = 0.0f; // Time of last frame
 
 // cloth
 struct ClothPoint {
-	glm::vec3 pos, vel, forces;
+	glm::vec3 pos, vel, forces, norm;
 	glm::vec2 uv;
 };
 const int columns = 15;
@@ -108,6 +108,7 @@ int main()
 			points[i * columns + j].vel = glm::vec3(0.0f);
 			points[i * columns + j].forces = glm::vec3(0.0f);
 			points[i * columns + j].uv = glm::vec2(i / (float)rows, j / (float)columns);
+			points[i * columns + j].norm = glm::vec3(0.0f, 0.0f, 1.0f);
 		}
 	}
 		// initialize springs
@@ -167,6 +168,11 @@ int main()
 	{
 		clothUVs[i] = points[i].uv;
 	}
+	glm::vec3 clothNormals[numPoints];
+	for (int i = 0; i < numPoints; i++)
+	{
+		clothNormals[i] = points[i].norm;
+	}
 	unsigned int clothVAO;
 	glGenVertexArrays(1, &clothVAO);
 	glBindVertexArray(clothVAO);
@@ -178,12 +184,19 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
 	glEnableVertexAttribArray(0);
 
+	unsigned int clothNormBuffer;
+	glGenBuffers(1, &clothNormBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, clothNormBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(clothNormals), clothNormals, GL_STREAM_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+	glEnableVertexAttribArray(1);
+
 	unsigned int clothUVBuffer;
 	glGenBuffers(1, &clothUVBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, clothUVBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(clothUVs), clothUVs, GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)0);
-	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)0);
+	glEnableVertexAttribArray(2);
 
 
 	unsigned int clothElementBuffer;
@@ -215,10 +228,11 @@ int main()
 
 	// Floor
 	float floorVertices[] = {
-		-20.0f, 0.0f, -20.0f, 0.0f, 0.0f,
-		-20.0f, 0.0f, 20.0f, 0.0f, 8.0f,
-		20.0f, 0.0f, -20.0f, 8.0f, 0.0f,
-		20.0f, 0.0f, 20.0f, 8.0f, 8.0f
+		//x			y		z			nX		nY		nZ		t		s
+		-20.0f,		0.0f,	-20.0f,		0.0f,	1.0f,	0.0f,	0.0f, 0.0f,
+		-20.0f,		0.0f,	20.0f,		0.0f,	1.0f,	0.0f,	0.0f, 8.0f,
+		 20.0f,		0.0f,	-20.0f,		0.0f,	1.0f,	0.0f,	8.0f, 0.0f,
+		 20.0f,		0.0f,	20.0f,		0.0f,	1.0f,	0.0f,	8.0f, 8.0f
 	};
 	int floorIndices[] = {
 		0, 1, 2,
@@ -235,10 +249,12 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, floorEBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(floorIndices), floorIndices, GL_STATIC_DRAW);
 	// Tell OpenGL how to use vertex data
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0); //Uses whatever VBO is bound to GL_ARRAY_BUFFER
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0); //Uses whatever VBO is bound to GL_ARRAY_BUFFER
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
 
 	// Floor texture
 	// Set up textures
@@ -323,8 +339,7 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		std::cout << deltaTime << std::endl;
-		deltaTime = 0.005;
+		deltaTime = 0.001;
 
 		// input
 		processInput(window);
@@ -376,13 +391,17 @@ int main()
 			p1.forces += dragForce / 3.0f;
 			p2.forces += dragForce / 3.0f;
 			p3.forces += dragForce / 3.0f;
+
+			p1.norm += n;
+			p2.norm += n;
+			p3.norm += n;
 		}
 		// Process each non-fixed point
 		for (int i = 0; i < numPoints; i++)
 		{
+			ClothPoint &p = points[i];
 			if (i % columns != 0)
 			{
-				ClothPoint &p = points[i];
 				// Gravity
 				p.forces += grav * clothMass;
 				// Now integrate forces
@@ -406,16 +425,26 @@ int main()
 				}
 
 				p.forces = glm::vec3(0.0f);
+
 			}
 
+			// Calculate normals
+			// normal should have been added from each face, so we just normalize
+			p.norm += glm::vec3(0.0f, 0.0f, 0.01f);
+			p.norm = p.norm / glm::length(p.norm);
+			//std::cout << glm::length(p.norm) << std::endl;
+			
 		}
 
 		for (int i = 0; i < numPoints; i++)
 		{
 			clothVertices[i] = points[i].pos;
+			clothNormals[i] = points[i].norm;
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, clothPosBuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(clothVertices), clothVertices, GL_STREAM_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, clothNormBuffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(clothNormals), clothNormals, GL_STREAM_DRAW);
 
 
 		// rendering commands here
@@ -430,14 +459,23 @@ int main()
 		glActiveTexture(GL_TEXTURE0);
 		//glBindTexture(GL_TEXTURE_2D, texture);
 		texturedShader.use();
-		texturedShader.setInt("texture1",0);
 		texturedShader.setMat4("view", view);
 		texturedShader.setMat4("projection", projection);
 		texturedShader.setMat4("model", model);
+
+		texturedShader.setVec3("viewPos", cameraPos);
+		texturedShader.setVec3("light.direction", glm::vec3(0.0f, -1.0f, 1.0f));
+		texturedShader.setVec3("light.ambient", glm::vec3(0.3f, 0.3f, 0.3f));
+		texturedShader.setVec3("light.diffuse", glm::vec3(0.9f, 0.9f, 0.9f));
+		texturedShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
+		texturedShader.setInt("material.diffuse",0);
+		texturedShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+		texturedShader.setFloat("material.shininess", 0.1f);
 		glBindVertexArray(floorVAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		texturedShader.setInt("texture1", 1);
+		texturedShader.setInt("material.diffuse", 1);
 		glBindVertexArray(clothVAO);
 		glDrawElements(GL_TRIANGLES, (rows - 1) * (columns - 1) * 6, GL_UNSIGNED_INT, 0);
 		
