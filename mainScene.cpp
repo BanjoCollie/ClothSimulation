@@ -59,8 +59,10 @@ Spring springs[numSprings];
 // cloth physics
 float clothK = 10000.0f;
 float clothMass = 1.0f;
-float dampK = 10.0f;
+float dampK = 100.0f;
 glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
+float airDensity = 5.0f;
+float clothDragCoef = 5.0f;
 
 // Sphere
 const float sphereR = 2.0f;
@@ -321,27 +323,59 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		deltaTime = 0.001;
+		std::cout << deltaTime << std::endl;
+		deltaTime = 0.005;
 
 		// input
 		processInput(window);
 
 		// processing
 		// Process for each spring
-		for (int i = 0; i < numSprings; i++)
+			for (int i = 0; i < numSprings; i++)
+			{
+				// Apply a force to both points you are connected to
+				Spring &s = springs[i];
+				glm::vec3 displacement = s.point1->pos - s.point2->pos;
+				glm::vec3 dir = glm::normalize(displacement);
+				float len = glm::length(displacement);
+				float sForce = (s.restLen - len) * clothK;
+				s.point1->forces += sForce * dir;
+				s.point2->forces -= sForce * dir;
+				// Dampen velocities
+				float v1 = glm::dot(s.point1->vel, dir);
+				float v2 = glm::dot(s.point2->vel, dir);
+				glm::vec3 dForce = dir * dampK * (v1 - v2);
+				s.point1->forces -= dForce;
+				s.point2->forces += dForce;
+				/* // Old method
+				glm::vec3 dForce = dampK * (s.point1->vel - s.point2->vel);
+				s.point1->forces -= dForce;
+				s.point2->forces += dForce;
+				//*/
+			}
+		// Process each face
+		for (int i = 0; i < numFaces; i += 1)
 		{
-			// Apply a force to both points you are connected to
-			Spring &s = springs[i];
-			glm::vec3 displacement = s.point1->pos - s.point2->pos;
-			glm::vec3 dir = glm::normalize(displacement);
-			float len = glm::length(displacement);
-			float sForce = (s.restLen - len) * clothK;
-			s.point1->forces += sForce * dir;
-			s.point2->forces -= sForce * dir;
-			// Dampen velocities
-			glm::vec3 dForce = dampK * (s.point1->vel - s.point2->vel);
-			s.point1->forces -= dForce;
-			s.point2->forces += dForce;
+			// Get points for each point on face
+			ClothPoint &p1 = points[clothIndices[i*3]];
+			ClothPoint &p2 = points[clothIndices[i*3 + 1]];
+			ClothPoint &p3 = points[clothIndices[i*3 + 2]];
+			// Drag
+			// f = -1/2p*length(v)*DragCoef*area*normal
+			glm::vec3 airVel = glm::vec3(0.0f, 0.0f, 0.001f);
+			// v is velocity of face - velocity of the air
+			glm::vec3 v = (p1.vel + p2.vel + p3.vel) / 3.0f + airVel;
+			// use cross product and normalize to get n
+			glm::vec3 cross = glm::cross((p1.pos - p2.pos), (p1.pos - p3.pos)); //Pull this out to reuse
+			glm::vec3 n = glm::normalize(cross);
+			// area of face is half of the area of parallelogram, dot this with velocity to get area exposed to flow
+			float a = glm::dot((0.5f * cross), glm::normalize(v));
+			// put all together to get drag
+			glm::vec3 dragForce = -0.5f * airDensity * glm::length(v) * clothDragCoef * a * n;
+			// Give each point on face 1/3 of force
+			p1.forces += dragForce / 3.0f;
+			p2.forces += dragForce / 3.0f;
+			p3.forces += dragForce / 3.0f;
 		}
 		// Process each non-fixed point
 		for (int i = 0; i < numPoints; i++)
@@ -350,7 +384,7 @@ int main()
 			{
 				ClothPoint &p = points[i];
 				// Gravity
-				p.forces += grav*clothMass;
+				p.forces += grav * clothMass;
 				// Now integrate forces
 				glm::vec3 accel = p.forces / clothMass;
 				p.vel += accel * deltaTime;
@@ -421,14 +455,14 @@ int main()
 		model = glm::mat4(1.0f);
 		clothShader.setMat4("model", model);
 
-		//clothShader.setVec4("col", glm::vec4(0.9f, 0.9f, 0.9f, 1.0f));
-
 		// check and call events and swap the buffers
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
 
 	glfwTerminate();
+
+	//while (true) {} // Uncomment to see output after you close window
 
 	return 0;
 }
@@ -445,7 +479,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	float cameraSpeed = 2.5f * deltaTime;
+	float cameraSpeed = 4.0f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		cameraPos += cameraSpeed * cameraFront;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -459,7 +493,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 		cameraPos -= cameraSpeed * cameraUp;
 
-	float sphereSpeed = 1.0f * deltaTime;
+	float sphereSpeed = 5.0f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		spherePos[0] += sphereSpeed;
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
