@@ -57,12 +57,12 @@ const int numSprings = (rows) * (columns - 1) + (rows - 1) * (columns);
 Spring springs[numSprings];
 
 // cloth physics
-float clothK = 10000.0f;
-float clothMass = 1.0f;
-float dampK = 100.0f;
+float clothK = 9.0f;
+float clothMass = 0.244f / numPoints; //Actual mass of flag in kg/m2
+float dampK = 0.1f;
 glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
-float airDensity = 5.0f;
-float clothDragCoef = 5.0f;
+float airDensity = 1.0f; // Actual density is 1.225 kg/m3 apparently
+float clothDragCoef = 0.01f;
 
 // Sphere
 const float sphereR = 2.0f;
@@ -339,7 +339,7 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		deltaTime = 0.001;
+		//deltaTime = 0.001;
 
 		// input
 		processInput(window);
