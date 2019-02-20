@@ -29,9 +29,15 @@ void main()
 	// ambient
     vec3 ambient = light.ambient * texture(material.diffuse, TexCoord).rgb;
   	
-    // diffuse 
-    vec3 norm = normalize(Normal);
-    // vec3 lightDir = normalize(light.position - FragPos);
+    // diffuse
+    vec3 norm;
+	if (!gl_FrontFacing) {
+		norm = -normalize(Normal);
+	}
+	else {
+		norm = normalize(Normal);
+	}
+	// vec3 lightDir = normalize(light.position - FragPos);
     vec3 lightDir = normalize(-light.direction);  
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = light.diffuse * diff * texture(material.diffuse, TexCoord).rgb;  

@@ -60,9 +60,11 @@ Spring springs[numSprings];
 float clothK = 9.0f;
 float clothMass = 0.244f / numPoints; //Actual mass of flag in kg/m2
 float dampK = 0.1f;
-glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
 float airDensity = 1.0f; // Actual density is 1.225 kg/m3 apparently
 float clothDragCoef = 0.01f;
+
+float timeInterval = 0.000;
+glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
 
 // Sphere
 const float sphereR = 2.0f;
@@ -236,7 +238,7 @@ int main()
 	};
 	int floorIndices[] = {
 		0, 1, 2,
-		1, 2, 3
+		1, 3, 2
 	};
 	// Buffer stuff for floor
 	unsigned int floorVAO, floorVBO, floorEBO;
@@ -339,7 +341,8 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		//deltaTime = 0.001;
+		if (timeInterval != 0.0f)
+			deltaTime = timeInterval;
 
 		// input
 		processInput(window);
@@ -531,7 +534,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 		cameraPos -= cameraSpeed * cameraUp;
 
-	float sphereSpeed = 5.0f * deltaTime;
+	float sphereSpeed = 2.0f * deltaTime;
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		spherePos[0] += sphereSpeed;
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
