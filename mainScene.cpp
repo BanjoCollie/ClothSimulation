@@ -39,7 +39,7 @@ float lastFrame = 0.0f; // Time of last frame
 
 // cloth
 struct ClothPoint {
-	glm::vec3 pos, vel, forces, norm;
+	glm::vec3 pos, vel, forces, norm, prevPos;
 	glm::vec2 uv;
 };
 const int columns = 15;
@@ -59,12 +59,14 @@ Spring springs[numSprings];
 // cloth physics
 float clothK = 9.0f;
 float clothMass = 0.244f / numPoints; //Actual mass of flag in kg/m2
-float dampK = 0.1f;
+float dampK = 0.2f;
 float airDensity = 1.0f; // Actual density is 1.225 kg/m3 apparently
 float clothDragCoef = 0.01f;
 
-float timeInterval = 0.000;
+float timeInterval = 0.002;
 glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
+
+bool eularianIntegration = false;
 
 // Sphere
 const float sphereR = 2.0f;
@@ -107,6 +109,7 @@ int main()
 		{
 			// Inital cloth points
 			points[i * columns + j].pos = glm::vec3(3.0f + ((float)i * 0.4f), 5.0f - (float)j *0.25f, 3.0f);
+			points[i * columns + j].prevPos = points[i * columns + j].pos;
 			points[i * columns + j].vel = glm::vec3(0.0f);
 			points[i * columns + j].forces = glm::vec3(0.0f);
 			points[i * columns + j].uv = glm::vec2(i / (float)rows, j / (float)columns);
@@ -411,7 +414,14 @@ int main()
 				glm::vec3 accel = p.forces / clothMass;
 				p.vel += accel * deltaTime;
 				// Integrate velocity
-				p.pos += p.vel * deltaTime;
+				if (eularianIntegration)
+					p.pos += p.vel * deltaTime;
+				else
+				{
+					glm::vec3 temp = p.prevPos;
+					p.prevPos = p.pos;
+					p.pos = 2.0f * p.pos - temp + accel * deltaTime*deltaTime;
+				}
 
 				// Collisions
 				if (p.pos[1] < 0.01f)
