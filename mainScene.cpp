@@ -42,28 +42,31 @@ struct ClothPoint {
 	glm::vec3 pos, vel, forces, norm, prevPos;
 	glm::vec2 uv;
 };
-const int columns = 15;
-const int rows = 15;
+const int columns = 30;
+const int rows = 30;
 const int numPoints = rows * columns;
 ClothPoint points[numPoints];
 
 struct Spring {
 	ClothPoint* point1;
 	ClothPoint* point2;
-	float restLen;
+	float restLen, k, vK;
 };
 //const int numSprings = (rows) * (columns-1);
-const int numSprings = (rows) * (columns - 1) + (rows - 1) * (columns);
+const int numSprings = (rows) * (columns - 1) + (rows - 1) * (columns);// +(rows) * (columns) * 4;
 Spring springs[numSprings];
 
 // cloth physics
-float clothK = 9.0f;
+float clothK = 4.00f;
+float dampK = 0.09f;
+float crossClothK = 9.0f;
+float crossDampK = 0.2f;
 float clothMass = 0.244f / numPoints; //Actual mass of flag in kg/m2
-float dampK = 0.2f;
 float airDensity = 1.0f; // Actual density is 1.225 kg/m3 apparently
 float clothDragCoef = 0.01f;
 
-float timeInterval = 0.002;
+
+float timeInterval = 0.001;
 glm::vec3 grav = glm::vec3(0.0f, -9.8f, 0.0f);
 
 bool eularianIntegration = false;
@@ -82,7 +85,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// glfw window creation
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "5611 HW1", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "5611 HW2", NULL, NULL);
 	glfwMakeContextCurrent(window);
 
 	// register callbacks
@@ -108,7 +111,9 @@ int main()
 		for (int j = 0; j < columns; j++)
 		{
 			// Inital cloth points
-			points[i * columns + j].pos = glm::vec3(3.0f + ((float)i * 0.4f), 5.0f - (float)j *0.25f, 3.0f);
+			float scale = 4.0f;
+			//points[i * columns + j].pos = glm::vec3(3.0f + scale * 1.92f * ((float)i / rows), 6.0f - scale * 1.220f * ((float)j / columns), 3.0f);
+			points[i * columns + j].pos = glm::vec3(3.0f + scale * 1.92f * ((float)i / rows), 6.0f, 3.0f - scale * 1.220f * ((float)j / columns));
 			points[i * columns + j].prevPos = points[i * columns + j].pos;
 			points[i * columns + j].vel = glm::vec3(0.0f);
 			points[i * columns + j].forces = glm::vec3(0.0f);
@@ -125,19 +130,66 @@ int main()
 			if (j < columns - 1)
 			{
 				Spring &s = springs[i * (columns - 1) + j];
+				//std::cout << i * (columns - 1) + j << std::endl;
 				s.point1 = &points[i * columns + j];
 				s.point2 = &points[(i + 0) * columns + (j + 1)];
 				s.restLen = glm::length(s.point1->pos - s.point2->pos);
+				s.k = clothK;
+				s.vK = dampK;
 			}
 
 			// Verticle springs - there are (rows-1) * (column) of these
 			if (i < rows - 1)
 			{
 				Spring &s = springs[(rows) * (columns - 1) + i * columns + j];
+				//std::cout << (rows) * (columns - 1) + i * columns + j << std::endl;
 				s.point1 = &points[i * columns + j];
 				s.point2 = &points[(i + 1) * columns + j];
 				s.restLen = glm::length(s.point1->pos - s.point2->pos);
+				s.k = clothK;
+				s.vK = dampK;
 			}
+
+			// Cross springs
+			/*
+			if (i < rows - 2)// all but last 2 rows
+			{
+				if (i % 2 == 0 && j % 2 == 0) // every other point
+				{
+					Spring&s = springs[(rows) * (columns - 1) + (rows - 1) * (columns)+i * columns + j];
+					if (j%columns - 2 >= 0) // down left spring - only if you can move two to your left
+					{
+						std::cout << (rows) * (columns - 1) + (rows - 1) * (columns)+i * columns + j << std::endl;
+						s.point1 = &points[i * columns + j];
+						s.point2 = &points[(i - 2) * columns + j + 2];
+						s.restLen = glm::length(s.point1->pos - s.point2->pos);
+						s.k = crossClothK;
+						s.vK = crossDampK;
+					}
+					if (j % columns + 2 <= columns) // down right spring - only if you can move two to the right
+					{
+						std::cout << (rows) * (columns - 1) + (rows - 1) * (columns)+i * columns + j << std::endl;
+						s.point1 = &points[i * columns + j];
+						s.point2 = &points[(i + 2) * columns + j + 2];
+						s.restLen = glm::length(s.point1->pos - s.point2->pos);
+						s.k = crossClothK;
+						s.vK = crossDampK;
+					}
+				}
+			}
+			//*/
+		}
+	}
+	// Cross springs
+	for (int i = 0; i < rows/2; i++)
+	{
+		for (int j = 0; j < columns/2; j++)
+		{
+			// There are (rows) * (columns - 1) + (rows - 1) * (columns) spings already
+			// Spring&s = springs[(rows) * (columns - 1) + (rows - 1) * (columns) + (columns / 2) * i + j];
+			//std::cout << (rows) * (columns - 1) + (rows - 1) * (columns)+(columns / 2) * i + j << std::endl;
+
+
 		}
 	}
 
@@ -344,6 +396,7 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+		std::cout << 1.0f/deltaTime << std::endl;
 		if (timeInterval != 0.0f)
 			deltaTime = timeInterval;
 
@@ -368,36 +421,40 @@ int main()
 				glm::vec3 dForce = dir * dampK * (v1 - v2);
 				s.point1->forces -= dForce;
 				s.point2->forces += dForce;
+				
 				/* // Old method
-				glm::vec3 dForce = dampK * (s.point1->vel - s.point2->vel);
-				s.point1->forces -= dForce;
-				s.point2->forces += dForce;
+				glm::vec3 dForce2 = dampK / 1000.0f * (s.point1->vel - s.point2->vel);
+				s.point1->forces -= dForce2;
+				s.point2->forces += dForce2;
 				//*/
 			}
 		// Process each face
-		for (int i = 0; i < numFaces; i += 1)
-		{
-			// Get points for each point on face
-			ClothPoint &p1 = points[clothIndices[i*3]];
-			ClothPoint &p2 = points[clothIndices[i*3 + 1]];
-			ClothPoint &p3 = points[clothIndices[i*3 + 2]];
-			// Drag
-			// f = -1/2p*length(v)*DragCoef*area*normal
-			glm::vec3 airVel = glm::vec3(0.0f, 0.0f, 0.001f);
-			// v is velocity of face - velocity of the air
-			glm::vec3 v = (p1.vel + p2.vel + p3.vel) / 3.0f + airVel;
-			// use cross product and normalize to get n
-			glm::vec3 cross = glm::cross((p1.pos - p2.pos), (p1.pos - p3.pos)); //Pull this out to reuse
-			glm::vec3 n = glm::normalize(cross);
-			// area of face is half of the area of parallelogram, dot this with velocity to get area exposed to flow
-			float a = glm::dot((0.5f * cross), glm::normalize(v));
-			// put all together to get drag
-			glm::vec3 dragForce = -0.5f * airDensity * glm::length(v) * clothDragCoef * a * n;
-			// Give each point on face 1/3 of force
-			p1.forces += dragForce / 3.0f;
-			p2.forces += dragForce / 3.0f;
-			p3.forces += dragForce / 3.0f;
-
+			for (int i = 0; i < numFaces; i += 1)
+			{
+				// Get points for each point on face
+				ClothPoint &p1 = points[clothIndices[i * 3]];
+				ClothPoint &p2 = points[clothIndices[i * 3 + 1]];
+				ClothPoint &p3 = points[clothIndices[i * 3 + 2]];
+				// Drag
+				// f = -1/2p*length(v)*DragCoef*area*normal
+				glm::vec3 airVel = glm::vec3(0.0f, 0.0f, 0.001f);
+				// v is velocity of face - velocity of the air
+				glm::vec3 v = (p1.vel + p2.vel + p3.vel) / 3.0f + airVel;
+				// use cross product and normalize to get n
+				glm::vec3 cross = glm::cross((p1.pos - p2.pos), (p1.pos - p3.pos)); //Pull this out to reuse
+				glm::vec3 n = glm::normalize(cross);
+				// area of face is half of the area of parallelogram, dot this with velocity to get area exposed to flow
+				float a = glm::dot((0.5f * cross), glm::normalize(v));
+				// put all together to get drag
+				glm::vec3 dragForce = -0.5f * airDensity * glm::length(v) * clothDragCoef * a * n;
+				// Give each point on face 1/3 of force
+				bool drag = true;
+				if (drag)
+				{	
+					p1.forces += dragForce / 3.0f;
+					p2.forces += dragForce / 3.0f;
+					p3.forces += dragForce / 3.0f;
+				}
 			p1.norm += n;
 			p2.norm += n;
 			p3.norm += n;
@@ -410,14 +467,19 @@ int main()
 			{
 				// Gravity
 				p.forces += grav * clothMass;
+				//p.forces -= 0.0001f * p.vel;
+
 				// Now integrate forces
 				glm::vec3 accel = p.forces / clothMass;
-				p.vel += accel * deltaTime;
 				// Integrate velocity
 				if (eularianIntegration)
+				{
 					p.pos += p.vel * deltaTime;
+					p.vel += accel * deltaTime;
+				}
 				else
 				{
+					p.vel += accel * deltaTime;
 					glm::vec3 temp = p.prevPos;
 					p.prevPos = p.pos;
 					p.pos = 2.0f * p.pos - temp + accel * deltaTime*deltaTime;

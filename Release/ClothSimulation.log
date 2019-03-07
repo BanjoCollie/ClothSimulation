@@ -1,18 +1,18 @@
 ﻿  mainScene.cpp
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(66): warning C4305: 'initializing': truncation from 'double' to 'float'
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(344): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(430): warning C4305: '*=': truncation from 'double' to 'T'
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(69): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(396): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(492): warning C4305: '*=': truncation from 'double' to 'T'
           with
           [
               T=float
           ]
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(563): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(564): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(568): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(569): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(570): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(571): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(573): warning C4305: 'initializing': truncation from 'double' to 'float'
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(625): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(626): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(630): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(631): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(632): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(633): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+c:\users\jacob\source\repos\clothsimulation\clothsimulation\mainscene.cpp(635): warning C4305: 'initializing': truncation from 'double' to 'float'
 LINK : warning LNK4098: defaultlib 'MSVCRTD' conflicts with use of other libs; use /NODEFAULTLIB:library
   Generating code
   1 of 467 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
